@@ -22,26 +22,27 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import java.util.Date;
+import java.util.Locale;
+
 public class MainActivity extends AppCompatActivity
         implements LoaderManager.LoaderCallbacks<Cursor> {
 
 
-    final private String tag = "MainActivity";
-    final private int LOADER_AUDIO_ID = 33;
-    final private int LOADER_IMAGE_ID = 33;
+    final private String tag             = "MainActivity";
+    final private int    LOADER_AUDIO_ID = 33;
 
 
     String[] AUDIO_COLUMNS = {
 
             MediaStore.Audio.Media.DISPLAY_NAME,
-            MediaStore.Audio.Media.DURATION,
-            MediaStore.Audio.Media.SIZE
+            MediaStore.Audio.Media.SIZE,
+            MediaStore.Audio.Media.DURATION
     };
-    
-    
 
 
     RecyclerView recyclerView;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,49 +53,33 @@ public class MainActivity extends AppCompatActivity
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
 
-        run(LOADER_AUDIO_ID);
+        run();
 
     }
+
 
     @NonNull
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
 
-
-        CursorLoader cursorLoader = new CursorLoader(
-
-                getApplicationContext(),
+        return new CursorLoader(getApplicationContext(),
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                 AUDIO_COLUMNS,
                 null,
                 null,
                 AUDIO_COLUMNS[0] + " ASC");
 
-
-        return cursorLoader;
     }
 
     @Override
     public void onLoadFinished(@NonNull Loader<Cursor> loader, Cursor data) {
 
         Log.i(tag, "onLoadFinished : " + data.getCount());
-        
-        
-        if(loader.getId() == LOADER_AUDIO_ID){
 
-            Log.i(tag,"LOADER_AUDIO_ID");
 
-            recyclerView.swapAdapter(new RecyclerViewAdapter(data, AUDIO_COLUMNS), true);
-        }
-        else if(loader.getId() == LOADER_IMAGE_ID){
+        recyclerView.swapAdapter(new RecyclerViewAdapter(data), true);
 
-            Log.i(tag,"LOADER_IMAGE_ID");
 
-            recyclerView.swapAdapter(new RecyclerViewAdapter(data, null), true);
-        }
-        
-        
-        
     }
 
     @Override
@@ -104,54 +89,34 @@ public class MainActivity extends AppCompatActivity
     }
 
 
-    public void run(int id) {
-        
-        if(id == LOADER_AUDIO_ID){
+    public void run() {
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
 
-                runWithPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
-                        () -> initLoader(LOADER_AUDIO_ID), 3);
+        runWithPermission(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                this::initLoader,
+                3);
 
-            }
-        }
-        else if (id == LOADER_IMAGE_ID) {
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-
-                runWithPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
-                        () -> initLoader(LOADER_IMAGE_ID), 3);
-
-            }
-        }
-        
-            
-        
     }
-    
-    private void initLoader(int id) {
+
+    private void initLoader() {
 
         Log.i(tag, "loader init");
 
-        if (id == LOADER_AUDIO_ID) {
+        getSupportLoaderManager().initLoader(LOADER_AUDIO_ID, null, this);
 
-            getSupportLoaderManager().initLoader(LOADER_AUDIO_ID, null, this);
-        }
-        
-        
+
     }
-    
+
     class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
 
         Cursor cursor;
-        String[] cols;
 
-        RecyclerViewAdapter(@NonNull Cursor cursor, @NonNull String[] cols) {
+        RecyclerViewAdapter(@NonNull Cursor cursor) {
 
             this.cursor = cursor;
             cursor.moveToNext();
-            
-            this.cols = cols;
         }
 
 
@@ -166,10 +131,10 @@ public class MainActivity extends AppCompatActivity
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
 
             cursor.moveToPosition(position);
+            holder.textView1.setText(cursor.getString(cursor.getColumnIndex(AUDIO_COLUMNS[0])));
+            holder.textView3.setText(String.format("%.2f MB", Float.valueOf(cursor.getString(cursor.getColumnIndex(AUDIO_COLUMNS[1]))) / (1024 * 1024)));
+            holder.textView2.setText(formateMilliSeccond(cursor.getLong(cursor.getColumnIndex(AUDIO_COLUMNS[2]))));
 
-            holder.textView1.setText(cursor.getString(cursor.getColumnIndex(cols[0])));
-            holder.textView2.setText(formateMilliSeccond(cursor.getLong(cursor.getColumnIndex(cols[1]))));
-            holder.textView3.setText(String.format("%.2f MB", Float.valueOf(cursor.getString(cursor.getColumnIndex(cols[2]))) / (1024 * 1024)));
         }
 
         @Override
@@ -196,33 +161,34 @@ public class MainActivity extends AppCompatActivity
         void run();
     }
 
-    int requestCode;
+    int                requestCode;
     PermissionCallback permissionCallback;
 
     public void runWithPermission(@NonNull String permission, @NonNull PermissionCallback permissionCallback, int permissionRequestCode) {
 
-        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
 
-            Log.i(tag, "izne gerek yok");
-            permissionCallback.run();
-        } 
-        else {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
+
+                Log.i(tag, "izin var");
+                permissionCallback.run();
+
+            }
+            else {
 
                 this.permissionCallback = permissionCallback;
                 requestCode = permissionRequestCode;
 
                 requestPermissions(new String[]{permission}, permissionRequestCode);
-            } 
-            else {
-
-                Log.i(tag, "istenen izinde sorun var : " + permission);
             }
 
-
         }
+        else {
 
+            Log.i(tag, "izne gerek yok");
+            permissionCallback.run();
+        }
     }
 
     @Override
@@ -230,30 +196,28 @@ public class MainActivity extends AppCompatActivity
 
 
         if (requestCode != this.requestCode) return;
-        
-        if(grantResults[0] == PackageManager.PERMISSION_GRANTED){
+
+        if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
             permissionCallback.run();
         }
-        else{
-            
+        else {
+
             Log.i(tag, "izin reddedildi");
         }
-        
+
         this.requestCode = -1;
 
     }
 
-
-    
-
+    @NonNull
     String formateMilliSeccond(long milliseconds) {
 
         String finalTimerString = "";
         String secondsString;
 
         // Convert total textView2 into time
-        int hours = (int) (milliseconds / (1000 * 60 * 60));
+        int hours   = (int) (milliseconds / (1000 * 60 * 60));
         int minutes = (int) (milliseconds % (1000 * 60 * 60)) / (1000 * 60);
         int seconds = (int) ((milliseconds % (1000 * 60 * 60)) % (1000 * 60) / 1000);
 
@@ -281,37 +245,36 @@ public class MainActivity extends AppCompatActivity
         return finalTimerString;
     }
 
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
 
-
         getMenuInflater().inflate(R.menu.main_menu, menu);
-        
+
         return super.onCreateOptionsMenu(menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
 
-        switch (item.getItemId()) {
-            
-            
-            case R.id.menuMusics:
 
-                Log.i(tag, "müzikler seçildi");
-                
-                return true;
-                
-            case R.id.menuImages:
-
-                Log.i(tag, "resimler seçildi");
-                return true;
-            
-        }
-        
-        
-        
         return super.onOptionsItemSelected(item);
+    }
+
+
+    public static String getDate(String milis) {
+
+        Date date;
+
+        try {
+
+            date = new Date(Long.valueOf(milis));
+
+        }
+        catch (NumberFormatException e) {
+
+            return milis;
+        }
+
+        return String.format(new Locale("tr"), "%te %<tB %<tY %<tA %<tH:%<tM:%<tS", date);
     }
 }

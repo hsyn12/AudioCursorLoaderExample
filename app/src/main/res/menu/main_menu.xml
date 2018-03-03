@@ -1,12 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+<menu
     xmlns:android="http://schemas.android.com/apk/res/android">
     
-    <item
-        android:id="@+id/menuMusics"
-        android:title="Müzikler"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/menuImages"
-        android:title="Resimler" />
+    <item android:title="Item" />
 </menu>
