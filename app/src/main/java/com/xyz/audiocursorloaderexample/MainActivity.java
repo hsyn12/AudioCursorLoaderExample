@@ -16,6 +16,8 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -50,7 +52,7 @@ public class MainActivity extends AppCompatActivity
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
 
-        run();
+        run(LOADER_AUDIO_ID);
 
     }
 
@@ -102,20 +104,41 @@ public class MainActivity extends AppCompatActivity
     }
 
 
-    public void run() {
+    public void run(int id) {
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+        if(id == LOADER_AUDIO_ID){
 
-            runWithPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
-                    this::initLoader, 3);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
 
+                runWithPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
+                        () -> initLoader(LOADER_AUDIO_ID), 3);
+
+            }
         }
+        else if (id == LOADER_IMAGE_ID) {
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+
+                runWithPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
+                        () -> initLoader(LOADER_IMAGE_ID), 3);
+
+            }
+        }
+        
+            
+        
     }
     
-    private void initLoader() {
+    private void initLoader(int id) {
 
         Log.i(tag, "loader init");
-        getSupportLoaderManager().initLoader(LOADER_AUDIO_ID, null, this);
+
+        if (id == LOADER_AUDIO_ID) {
+
+            getSupportLoaderManager().initLoader(LOADER_AUDIO_ID, null, this);
+        }
+        
+        
     }
     
     class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
@@ -216,6 +239,8 @@ public class MainActivity extends AppCompatActivity
             
             Log.i(tag, "izin reddedildi");
         }
+        
+        this.requestCode = -1;
 
     }
 
@@ -257,4 +282,36 @@ public class MainActivity extends AppCompatActivity
     }
 
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+
+
+        getMenuInflater().inflate(R.menu.main_menu, menu);
+        
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        switch (item.getItemId()) {
+            
+            
+            case R.id.menuMusics:
+
+                Log.i(tag, "müzikler seçildi");
+                
+                return true;
+                
+            case R.id.menuImages:
+
+                Log.i(tag, "resimler seçildi");
+                return true;
+            
+        }
+        
+        
+        
+        return super.onOptionsItemSelected(item);
+    }
 }
