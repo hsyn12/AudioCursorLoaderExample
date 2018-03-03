@@ -25,15 +25,18 @@ public class MainActivity extends AppCompatActivity
 
 
     final private String tag = "MainActivity";
-    final private int LOADER_ID = 33;
+    final private int LOADER_AUDIO_ID = 33;
+    final private int LOADER_IMAGE_ID = 33;
 
 
-    String[] cols = {
+    String[] AUDIO_COLUMNS = {
 
             MediaStore.Audio.Media.DISPLAY_NAME,
             MediaStore.Audio.Media.DURATION,
             MediaStore.Audio.Media.SIZE
     };
+    
+    
 
 
     RecyclerView recyclerView;
@@ -51,6 +54,7 @@ public class MainActivity extends AppCompatActivity
 
     }
 
+    @NonNull
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
 
@@ -59,10 +63,10 @@ public class MainActivity extends AppCompatActivity
 
                 getApplicationContext(),
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                cols,
+                AUDIO_COLUMNS,
                 null,
                 null,
-                cols[0] + " ASC");
+                AUDIO_COLUMNS[0] + " ASC");
 
 
         return cursorLoader;
@@ -71,119 +75,60 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onLoadFinished(@NonNull Loader<Cursor> loader, Cursor data) {
 
-        recyclerView.setAdapter(new RecyclerViewAdapter(data));
+        Log.i(tag, "onLoadFinished : " + data.getCount());
         
-/*
-        int nameColumn     = data.getColumnIndex(cols[0]);
-        int durationColumn = data.getColumnIndex(cols[1]);
-        int sizeColumn     = data.getColumnIndex(cols[2]);
+        
+        if(loader.getId() == LOADER_AUDIO_ID){
 
-        while (data.moveToNext()) {
-            
-            String  name     = data.getString(nameColumn),
-                    duration = data.getString(durationColumn),
-                    size     = data.getString(sizeColumn);
-            
-            
+            Log.i(tag,"LOADER_AUDIO_ID");
 
-            String message = String.format(
-                    
-                        "name       : %s\n" + 
-                        "duration   : %s\n" +
-                        "size       : %s\n",
+            recyclerView.swapAdapter(new RecyclerViewAdapter(data, AUDIO_COLUMNS), true);
+        }
+        else if(loader.getId() == LOADER_IMAGE_ID){
 
-                        name, duration, size);
-            
-            
-            Log.i(tag, message);
-        }*/
+            Log.i(tag,"LOADER_IMAGE_ID");
 
-
+            recyclerView.swapAdapter(new RecyclerViewAdapter(data, null), true);
+        }
+        
+        
+        
     }
 
     @Override
     public void onLoaderReset(@NonNull Loader<Cursor> loader) {
 
-        recyclerView.setAdapter(null);
+        recyclerView.swapAdapter(null, true);
     }
 
 
     public void run() {
-
-
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
 
             runWithPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
                     this::initLoader, 3);
 
         }
-
     }
-
-
-    int requestCode;
-    PermissionCallback permissionCallback;
-
-    public void runWithPermission(@NonNull String permission, @NonNull PermissionCallback permissionCallback, int permissionRequestCode) {
-
-        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
-
-            Log.i(tag, "izne gerek yok");
-            permissionCallback.run();
-        } else {
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-
-                this.permissionCallback = permissionCallback;
-                requestCode = permissionRequestCode;
-
-                requestPermissions(new String[]{permission}, permissionRequestCode);
-
-            } else {
-
-                Log.i(tag, "istenen izinde sorun var");
-            }
-
-
-        }
-
-    }
-
+    
     private void initLoader() {
 
         Log.i(tag, "loader init");
-        getSupportLoaderManager().initLoader(LOADER_ID, null, this);
+        getSupportLoaderManager().initLoader(LOADER_AUDIO_ID, null, this);
     }
-
-    @FunctionalInterface
-    interface PermissionCallback {
-        void run();
-    }
-
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-
-
-        if (requestCode == this.requestCode) {
-
-            permissionCallback.run();
-
-        }
-
-
-    }
-
-
+    
     class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
 
         Cursor cursor;
+        String[] cols;
 
-        RecyclerViewAdapter(Cursor cursor) {
+        RecyclerViewAdapter(@NonNull Cursor cursor, @NonNull String[] cols) {
 
             this.cursor = cursor;
             cursor.moveToNext();
-
+            
+            this.cols = cols;
         }
 
 
@@ -198,10 +143,10 @@ public class MainActivity extends AppCompatActivity
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
 
             cursor.moveToPosition(position);
-            
-            holder.name.setText(cursor.getString(cursor.getColumnIndex(cols[0])));
-            holder.duration.setText(formateMilliSeccond(cursor.getLong(cursor.getColumnIndex(cols[1]))));
-            holder.size.setText(String.format("%.2f MB", Float.valueOf(cursor.getString(cursor.getColumnIndex(cols[2]))) / (1024 * 1024)));
+
+            holder.textView1.setText(cursor.getString(cursor.getColumnIndex(cols[0])));
+            holder.textView2.setText(formateMilliSeccond(cursor.getLong(cursor.getColumnIndex(cols[1]))));
+            holder.textView3.setText(String.format("%.2f MB", Float.valueOf(cursor.getString(cursor.getColumnIndex(cols[2]))) / (1024 * 1024)));
         }
 
         @Override
@@ -211,27 +156,78 @@ public class MainActivity extends AppCompatActivity
 
         class ViewHolder extends RecyclerView.ViewHolder {
 
-            TextView name, duration, size;
+            TextView textView1, textView2, textView3;
 
             ViewHolder(View itemView) {
                 super(itemView);
 
-                name        = itemView.findViewById(R.id.textViewName);
-                duration    = itemView.findViewById(R.id.textViewDuration);
-                size        = itemView.findViewById(R.id.textViewSize);
+                textView1 = itemView.findViewById(R.id.textView1);
+                textView2 = itemView.findViewById(R.id.textView2);
+                textView3 = itemView.findViewById(R.id.textView3);
             }
         }
+    }
 
+    @FunctionalInterface
+    interface PermissionCallback {
+        void run();
+    }
+
+    int requestCode;
+    PermissionCallback permissionCallback;
+
+    public void runWithPermission(@NonNull String permission, @NonNull PermissionCallback permissionCallback, int permissionRequestCode) {
+
+        if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
+
+            Log.i(tag, "izne gerek yok");
+            permissionCallback.run();
+        } 
+        else {
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+                this.permissionCallback = permissionCallback;
+                requestCode = permissionRequestCode;
+
+                requestPermissions(new String[]{permission}, permissionRequestCode);
+            } 
+            else {
+
+                Log.i(tag, "istenen izinde sorun var : " + permission);
+            }
+
+
+        }
 
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+
+
+        if (requestCode != this.requestCode) return;
+        
+        if(grantResults[0] == PackageManager.PERMISSION_GRANTED){
+
+            permissionCallback.run();
+        }
+        else{
+            
+            Log.i(tag, "izin reddedildi");
+        }
+
+    }
+
+
+    
 
     String formateMilliSeccond(long milliseconds) {
 
         String finalTimerString = "";
         String secondsString;
 
-        // Convert total duration into time
+        // Convert total textView2 into time
         int hours = (int) (milliseconds / (1000 * 60 * 60));
         int minutes = (int) (milliseconds % (1000 * 60 * 60)) / (1000 * 60);
         int seconds = (int) ((milliseconds % (1000 * 60 * 60)) % (1000 * 60) / 1000);
