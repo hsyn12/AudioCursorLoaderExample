@@ -12,6 +12,7 @@ import android.support.v4.content.ContextCompat;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -22,27 +23,20 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import java.util.Date;
-import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity
         implements LoaderManager.LoaderCallbacks<Cursor> {
 
-
-    final private String tag             = "MainActivity";
-    final private int    LOADER_AUDIO_ID = 33;
-
-
-    String[] AUDIO_COLUMNS = {
+    final String[] AUDIO_COLUMNS = {
 
             MediaStore.Audio.Media.DISPLAY_NAME,
             MediaStore.Audio.Media.SIZE,
             MediaStore.Audio.Media.DURATION
     };
 
-
+    final private int    LOADER_AUDIO_ID = 33;
+    final private String tag             = "MainActivity";
     RecyclerView recyclerView;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,12 +45,21 @@ public class MainActivity extends AppCompatActivity
 
         recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setItemAnimator(new DefaultItemAnimator());
 
 
-        run();
-
+        runWithPermission(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                this::initLoader,
+                3);
     }
 
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    
+    Log.i(tag, "onDestroy");
+}
 
     @NonNull
     @Override
@@ -68,7 +71,6 @@ public class MainActivity extends AppCompatActivity
                 null,
                 null,
                 AUDIO_COLUMNS[0] + " ASC");
-
     }
 
     @Override
@@ -76,37 +78,22 @@ public class MainActivity extends AppCompatActivity
 
         Log.i(tag, "onLoadFinished : " + data.getCount());
 
-
         recyclerView.swapAdapter(new RecyclerViewAdapter(data), true);
-
-
     }
 
     @Override
     public void onLoaderReset(@NonNull Loader<Cursor> loader) {
 
-        recyclerView.swapAdapter(null, true);
+        Log.i(tag, "onLoaderReset");
+
+        recyclerView.swapAdapter(null, false);
     }
-
-
-    public void run() {
-
-
-        runWithPermission(
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                this::initLoader,
-                3);
-
-
-    }
-
+    
     private void initLoader() {
 
-        Log.i(tag, "loader init");
+        Log.i(tag, "initLoader");
 
         getSupportLoaderManager().initLoader(LOADER_AUDIO_ID, null, this);
-
-
     }
 
     class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
@@ -134,7 +121,6 @@ public class MainActivity extends AppCompatActivity
             holder.textView1.setText(cursor.getString(cursor.getColumnIndex(AUDIO_COLUMNS[0])));
             holder.textView3.setText(String.format("%.2f MB", Float.valueOf(cursor.getString(cursor.getColumnIndex(AUDIO_COLUMNS[1]))) / (1024 * 1024)));
             holder.textView2.setText(formateMilliSeccond(cursor.getLong(cursor.getColumnIndex(AUDIO_COLUMNS[2]))));
-
         }
 
         @Override
@@ -157,16 +143,17 @@ public class MainActivity extends AppCompatActivity
     }
 
     @FunctionalInterface
-    interface PermissionCallback {
-        void run();
-    }
+    interface PermissionCallback {void run();}
 
     int                requestCode;
     PermissionCallback permissionCallback;
 
     public void runWithPermission(@NonNull String permission, @NonNull PermissionCallback permissionCallback, int permissionRequestCode) {
-
-
+    
+    
+        this.permissionCallback = permissionCallback;
+        requestCode = permissionRequestCode;
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
             if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
@@ -176,9 +163,6 @@ public class MainActivity extends AppCompatActivity
 
             }
             else {
-
-                this.permissionCallback = permissionCallback;
-                requestCode = permissionRequestCode;
 
                 requestPermissions(new String[]{permission}, permissionRequestCode);
             }
@@ -192,8 +176,9 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
 
         if (requestCode != this.requestCode) return;
 
@@ -205,9 +190,6 @@ public class MainActivity extends AppCompatActivity
 
             Log.i(tag, "izin reddedildi");
         }
-
-        this.requestCode = -1;
-
     }
 
     @NonNull
@@ -256,25 +238,9 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
 
-
         return super.onOptionsItemSelected(item);
     }
 
 
-    public static String getDate(String milis) {
 
-        Date date;
-
-        try {
-
-            date = new Date(Long.valueOf(milis));
-
-        }
-        catch (NumberFormatException e) {
-
-            return milis;
-        }
-
-        return String.format(new Locale("tr"), "%te %<tB %<tY %<tA %<tH:%<tM:%<tS", date);
-    }
 }
